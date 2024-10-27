@@ -1,0 +1,156 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package vchat;
+
+// package type
+enum packagetype {
+  request = 0;
+  response = 1;
+  notify = 2;
+  heartbeat = 3;
+}
+
+// service type
+enum servicetype {
+  log = 0;
+  sign = 1;
+  manage = 2;
+  msg = 3;
+}
+
+// manage type
+enum ManageType {
+  change = 0;
+  add = 1;
+  delete = 2;
+}
+
+// HEADE
+message Head {
+  int32 version = 1;
+  int32 packageType = 2;
+  int32 servicetype = 3;
+  int32 bodysize = 4;
+  string delimiter = 5; // delimiter is "\n"
+}
+
+// INFORMATION
+message Persional {
+  int32 id = 1;
+  int32 password = 2;
+  string name = 3;
+  bool gender = 4; // true for male, false for female
+  int32 age = 5;
+  string signature = 6;
+  bool status = 7;
+}
+
+message Message {
+  int32 id = 1;
+  int32 sender = 2;
+  int32 receiver = 3;
+  string msg = 4;
+  google.protobuf.Timestamp time = 5;
+}
+
+message Info {
+  Persional myself = 1;
+  repeated Persional friends = 2;
+  repeated Message msgs = 3;
+}
+
+// SERVICE
+// C for client(request), S for server(response), N for notify
+//------------------------------------------ sign
+message Csign {
+  bool op = 1; // in / out
+  string name = 2;
+  int32 password = 3;
+}
+
+message Ssign {
+  bool res = 1; // success / error
+  int32 id = 2;
+}
+
+//------------------------------------------ log
+message Clog {
+  bool op = 1; // in / out
+  bool how = 2; // synchronous / roaming
+  int32 id = 3;
+  int32 password = 4;
+}
+
+enum LogRes {
+  success = 0;
+  logagain = 1;
+  pderror = 2; // password wrong
+}
+
+message Slog {
+  LogRes op = 1;
+  Info info = 2;
+}
+
+message Nlog {
+  int32 id = 1;
+}
+
+//------------------------------------------ manage
+message Manage {
+  ManageType op = 1;
+  Persional info = 2;
+}
+
+//------------------------------------------ message
+message Msg {
+  Message msg = 1;
+}
+
+// BODY
+// request
+message Request {
+  oneof request {
+    Csign sign = 1;
+    Clog log = 2;
+    Manage manage = 3;
+    Msg msg = 4;
+  }
+}
+
+// response
+message Response {
+  oneof response {
+    Ssign sign = 1;
+    Slog log = 2;
+    Manage manage = 3;
+    Msg msg = 4;
+  }
+}
+
+// notify
+message Notify {
+  oneof notify {
+    Nlog log = 1;
+    Manage manage = 2;
+    Msg msg = 3;
+  }
+}
+
+// heartbeat
+message HeartBeat {
+  bool alive = 1;
+}
+
+// PACKAGE
+message Package {
+  Head head = 1;
+  oneof body {
+    HeartBeat heartbeat = 2;
+    Request request = 3;
+    Response response = 4;
+    Notify notify = 5;
+  }
+}

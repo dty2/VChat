@@ -1,0 +1,7 @@
+/build
+/libs
+/.cache
+/.git
+/design
+/resources
+/protobuf/generate
