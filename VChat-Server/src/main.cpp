@@ -1,3 +1,4 @@
+#include <memory>
 #include <string>
 #include <filesystem>
 
@@ -5,38 +6,52 @@
 #include "absl/flags/parse.h"
 #include <glog/logging.h>
 
-#include "connection.h"
 #include "server.h"
+#include "service.h"
+#include "store.h"
 
 using namespace vchat;
 
 ABSL_FLAG(std::string, port, "2500", "Default: 2500");
 ABSL_FLAG(std::string, redis, "6379", "Default: 6379");
-ABSL_FLAG(std::string, sql, "/var/vchat/sql", "Default: /var/vchat/sql");
-ABSL_FLAG(std::string, log, "/var/vchat/log", "Default: /var/vchat/log");
+ABSL_FLAG(std::string, sqlite, "/var/tmp/vchat/vchat.db", "Default: /var/lib/vchat/vchat.db");
+ABSL_FLAG(std::string, log, "/var/tmp/vchat/", "Default: /var/tmp/vchat/");
+
+std::shared_ptr<RedisStore> redis;
+std::shared_ptr<SqliteStore> sqlite;
+std::shared_ptr<Service> service;
+std::shared_ptr<Server> server;
 
 class Init {
 public:
-  std::string port, redis, sql, log;
+  std::string net_port;
+  std::string redis_port, db_address;
+  std::string log_address;
   Init(int argc, char **argv) {
     absl::ParseCommandLine(argc, argv);
     // port init
-    std::string port = absl::GetFlag(FLAGS_port),
-                redis = absl::GetFlag(FLAGS_redis);
+    net_port = absl::GetFlag(FLAGS_port);
+    redis_port = absl::GetFlag(FLAGS_redis);
 
     // log init
-    std::string log = absl::GetFlag(FLAGS_log);
+    log_address = absl::GetFlag(FLAGS_log);
     FLAGS_alsologtostderr = false;
-    FLAGS_log_dir = log;
+    FLAGS_log_dir = log_address;
     FLAGS_max_log_size = 100 * 1024; // 100MB
     FLAGS_minloglevel = google::INFO;
-    if(std::filesystem::exists("/var/vchat/log"))
-      std::filesystem::create_directory("/var/vchat/log");
+    if(std::filesystem::exists(log_address))
+      std::filesystem::create_directory(log_address);
 
     // sql init
-    std::string sql = absl::GetFlag(FLAGS_sql);
-    if(std::filesystem::exists("/var/vchat/sql"))
-      std::filesystem::create_directory("/var/vchat/sql");
+    db_address = absl::GetFlag(FLAGS_sqlite);
+    if(std::filesystem::exists(db_address)) {
+      std::filesystem::create_directory(db_address);
+      sqlite = SqliteStore::getInstance(db_address);
+      SqliteStore::InitSqlite();
+    } else {
+      sqlite = SqliteStore::getInstance(db_address);
+    }
+    redis = RedisStore::getInstance(redis_port);
   }
 
   void startlog() {
@@ -46,6 +61,7 @@ public:
   void stoplog() {
     google::ShutdownGoogleLogging();
   }
+
 };
 
 int main(int argc, char **argv) {
@@ -53,10 +69,8 @@ int main(int argc, char **argv) {
   init.startlog();
   LOG(INFO) << "VChat-Server start...";
   try {
-    // Store store(init.sql);
-    ConnectionManager connectionmanager;
-    Server server(connectionmanager, init.port);
-    server.run();
+    service = Service::getInstance();
+    server = Server::getInstance(init.net_port);
   } catch (const std::exception &e) {
     LOG(INFO) << e.what();
   }

@@ -3,20 +3,18 @@
 
 #include <string>
 #include <set>
+#include <functional>
 #include <boost/asio.hpp>
 #include <glog/logging.h>
 #include "vchat.pb.h"
 
+
 using boost::asio::ip::tcp;
+using namespace vprotocol;
 
 namespace vchat {
 
-// enpack
-template <typename body>
-std::string enpack(body target);
-// depack
-template <typename body>
-body depackbody(std::string target);
+const int HeadSize = 16;
 
 class Service;
 class Connection;
@@ -24,8 +22,7 @@ typedef std::shared_ptr<Connection> Connection_ptr;
 
 class ConnectionManager {
 public:
-  ConnectionManager();
-  void add(Connection_ptr cp);
+  void add(tcp::socket socket);
   void stop(Connection_ptr cp);
   void stop_all();
 
@@ -37,18 +34,19 @@ private:
 class Connection : public std::enable_shared_from_this<Connection> {
 public:
   Connection(tcp::socket, ConnectionManager*);
-  ~Connection();
   void start();
   void stop();
-  void write(int, std::string);
+  template<typename package>
+  void write(Head head, package body, std::function<void()> callback = nullptr);
+  static Head enpackHead(int packagetype, int servicetype, int size);
 
 private:
   ConnectionManager* manager;
   tcp::socket socket;
   std::string head, body;
-  vchat::Head headinfo;
   void readhead();
   void readbody(int packagetype, int servicetype, int bodysize);
+
 };
 
 } //namespace vchat

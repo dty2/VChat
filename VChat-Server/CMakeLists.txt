@@ -8,10 +8,10 @@ set(SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(SOURCES)
 list(APPEND SOURCES
   ${SRC_DIR}/main.cpp
-  ${SRC_DIR}/net/server.cpp
-  ${SRC_DIR}/net/connection.cpp
-  ${SRC_DIR}/service/service.cpp
-  ${SRC_DIR}/data/store.cpp
+  ${SRC_DIR}/server.cpp
+  ${SRC_DIR}/connection.cpp
+  ${SRC_DIR}/service.cpp
+  ${SRC_DIR}/store.cpp
 )
 
 add_executable(server ${SOURCES})

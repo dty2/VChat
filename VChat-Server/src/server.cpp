@@ -2,10 +2,9 @@
 
 namespace vchat {
 
-Server::Server(ConnectionManager &manager, std::string port)
+Server::Server(std::string port)
   : address("127.0.0.1"),
     port(port),
-    manager(manager),
     io_context(1),
     signals(io_context),
     acceptor(io_context)
@@ -35,8 +34,7 @@ void Server::do_accept() {
   acceptor.async_accept([&](boost::system::error_code ec, tcp::socket socket) {
     if (!ec) {
       LOG(INFO) << "A new client connection";
-      manager.add(
-        std::make_shared<Connection>(std::move(socket), manager));
+      manager.add(std::move(socket));
     } else {
       LOG(INFO) << "Connection refused";
       LOG(INFO) << ec.what();

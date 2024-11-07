@@ -1,156 +1,182 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+package vprotocol;
 
-package vchat;
+// ------------------------------------------ information
+message Basic {
+  int32 id = 1;
+  string name = 2;
+  bool gender = 3; // true for male, false for female
+  int32 age = 4;
+  string signature = 5;
+}
 
-// package type
-enum packagetype {
+message Personal {
+  int32 id = 1;
+  int32 password = 2;
+}
+
+message Friend {
+  int32 id = 1;
+  int32 friendid = 2;
+  string remark = 3;
+}
+
+message Msg {
+  int32 id = 1; // msg id
+  int32 sender = 2;
+  int32 receiver = 3;
+  string msg = 4;
+  int32 time = 5;
+}
+
+// ----------------------------------------- private protocol
+// ----------------------------------------- head
+enum PackageType {
   request = 0;
   response = 1;
   notify = 2;
   heartbeat = 3;
 }
 
-// service type
-enum servicetype {
-  log = 0;
-  sign = 1;
-  manage = 2;
-  msg = 3;
+enum ServiceType {
+  sign = 0;
+  log = 1;
+  synchronous = 2;
+  change = 3;
+  find = 4;
+  manage = 5;
+  msg = 6;
 }
 
-// manage type
-enum ManageType {
-  change = 0;
-  add = 1;
-  delete = 2;
-}
-
-// HEADE
 message Head {
-  int32 version = 1;
-  int32 packageType = 2;
-  int32 servicetype = 3;
-  int32 bodysize = 4;
-  string delimiter = 5; // delimiter is "\n"
-}
+  fixed32 version = 1;
+  fixed32 packageType = 2;
+  fixed32 servicetype = 3;
+  fixed32 bodysize = 4;
+};
 
-// INFORMATION
-message Persional {
-  int32 id = 1;
-  int32 password = 2;
-  string name = 3;
-  bool gender = 4; // true for male, false for female
-  int32 age = 5;
-  string signature = 6;
-  bool status = 7;
-}
-
-message Message {
-  int32 id = 1;
-  int32 sender = 2;
-  int32 receiver = 3;
-  string msg = 4;
-  google.protobuf.Timestamp time = 5;
-}
-
-message Info {
-  Persional myself = 1;
-  repeated Persional friends = 2;
-  repeated Message msgs = 3;
-}
-
-// SERVICE
-// C for client(request), S for server(response), N for notify
+//------------------------------------------ body
 //------------------------------------------ sign
-message Csign {
-  bool op = 1; // in / out
-  string name = 2;
-  int32 password = 3;
+message SignInfo {
+  Basic basic = 1; // personal information
+  Personal personal = 2; // password
 }
 
-message Ssign {
-  bool res = 1; // success / error
+message RequestSign {
+  oneof info {
+    SignInfo signinfo = 1; // sign in
+    int32 id = 2; // sign out
+  }
+}
+
+message ResponseSign {
   int32 id = 2;
 }
 
+message NotifySign {
+  int32 id = 1; // just only sign out
+}
+
 //------------------------------------------ log
-message Clog {
-  bool op = 1; // in / out
-  bool how = 2; // synchronous / roaming
-  int32 id = 3;
-  int32 password = 4;
+message LogInfo {
+  int32 id = 1;
+  int32 password = 2;
 }
 
-enum LogRes {
-  success = 0;
-  logagain = 1;
-  pderror = 2; // password wrong
+message RequestLog {
+  oneof info {
+    LogInfo loginfo = 1; // log in
+    int32 id = 2; // log out
+  }
 }
 
-message Slog {
-  LogRes op = 1;
-  Info info = 2;
+enum LogReason {
+  repeat = 0;
+  wrong = 1; // password wrong
+  idnotexist = 2; // id not exist
 }
 
-message Nlog {
+message OfflineInfo {
+  repeated Basic friends = 1;
+  repeated Msg msgs = 2;
+  repeated Basic notifymanage = 3;
+  repeated int32 responsemanage = 4;
+}
+
+message ResponseLog {
+  oneof info {
+    LogReason reason = 1;
+    OfflineInfo offlineinfo = 2;
+  }
+}
+
+message NotifyLog {
+  bool status = 1;
+  int32 id = 2;
+}
+
+//------------------------------------------ synchronous
+message RequestSynchronous {
   int32 id = 1;
 }
 
+message ResponseSynchronous {
+  Basic basic = 1;
+  Personal personal = 2;
+  repeated Friend friends = 3;
+  repeated Msg msgs = 4;
+}
+
+//------------------------------------------ change
+message RequestChange {
+  oneof information {
+    Basic basic = 1;
+    Personal personal = 2;
+    Friend friend = 3;
+  }
+}
+
+message NotifyChange {
+  Basic basic = 1;
+}
+
+//------------------------------------------ find
+message RequestFind {
+  oneof info {
+    int32 id = 2;
+    string name = 3;
+  }
+}
+
+message ResponseFind {
+  repeated Basic basics = 1;
+}
+
 //------------------------------------------ manage
-message Manage {
-  ManageType op = 1;
-  Persional info = 2;
+message RequestManage {
+  int32 initiative = 1;
+  bool op = 2;
+  int32 id = 3;
+  int32 friendid= 4;
+}
+
+message NotifyManage {
+  int32 initiative = 1;
+  bool op = 2;
+  Basic basic = 3;
 }
 
 //------------------------------------------ message
-message Msg {
-  Message msg = 1;
+message RequestMsg {
+  Msg msg = 1;
 }
 
-// BODY
-// request
-message Request {
-  oneof request {
-    Csign sign = 1;
-    Clog log = 2;
-    Manage manage = 3;
-    Msg msg = 4;
-  }
+message NotifyMsg {
+  Msg msg = 1;
 }
 
-// response
-message Response {
-  oneof response {
-    Ssign sign = 1;
-    Slog log = 2;
-    Manage manage = 3;
-    Msg msg = 4;
-  }
-}
-
-// notify
-message Notify {
-  oneof notify {
-    Nlog log = 1;
-    Manage manage = 2;
-    Msg msg = 3;
-  }
-}
-
-// heartbeat
+//------------------------------------------ heartbeat
 message HeartBeat {
   bool alive = 1;
-}
-
-// PACKAGE
-message Package {
-  Head head = 1;
-  oneof body {
-    HeartBeat heartbeat = 2;
-    Request request = 3;
-    Response response = 4;
-    Notify notify = 5;
-  }
 }
